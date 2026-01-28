@@ -30,7 +30,14 @@
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         @keyframes progress { 0% { transform: translateX(-100%); } 50% { transform: translateX(0); } 100% { transform: translateX(100%); } }
         .animate-progress { animation: progress 1s infinite linear; }
-        #offline-indicator { display: none; }
+        #offline-indicator { 
+            display: none; 
+            position: fixed; 
+            top: 0; left: 0; width: 100%; 
+            background: #e11d48; color: white; 
+            text-align: center; font-size: 10px; padding: 4px 0;
+            z-index: 9999; font-weight: bold;
+        }
         body.is-offline #offline-indicator { display: block; }
     </style>
     <script type="importmap">
@@ -50,9 +57,7 @@
 <link rel="stylesheet" href="/index.css">
 </head>
 <body class="bg-gray-50 text-gray-900 transition-colors duration-300">
-    <div id="offline-indicator" class="fixed top-0 left-0 w-full bg-rose-600 text-white text-[10px] text-center py-1 font-bold z-[1000] uppercase tracking-wider">
-        আপনি অফলাইনে আছেন - ডাটা ডিভাইসে সংরক্ষিত হচ্ছে
-    </div>
+    <div id="offline-indicator">অফলাইন মোড: ডাটা ডিভাইসে সংরক্ষিত হচ্ছে</div>
 
     <div id="root"></div>
 
@@ -60,25 +65,20 @@
     
     <script>
         function updateOnlineStatus() {
-            if (navigator.onLine) {
-                document.body.classList.remove('is-offline');
-            } else {
-                document.body.classList.add('is-offline');
-            }
+            document.body.classList.toggle('is-offline', !navigator.onLine);
         }
         window.addEventListener('online', updateOnlineStatus);
         window.addEventListener('offline', updateOnlineStatus);
         updateOnlineStatus();
 
+        // সহজতম সার্ভিস ওয়ার্কার রেজিস্ট্রেশন যা সব এনভায়রনমেন্টে কাজ করবে
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                // './sw.js' সরাসরি ব্যবহার করা হচ্ছে
-                navigator.serviceWorker.register('sw.js')
-                    .then(function(reg) {
-                        console.log('Service Worker Registered');
-                    })
-                    .catch(function(err) {
-                        console.warn('SW failed:', err);
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('SW Registered:', reg.scope))
+                    .catch(err => {
+                        console.warn('SW failed, retrying without dot slash...');
+                        navigator.serviceWorker.register('sw.js').catch(e => console.error('SW final fail:', e));
                     });
             });
         }
