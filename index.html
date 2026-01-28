@@ -50,9 +50,8 @@
 <link rel="stylesheet" href="/index.css">
 </head>
 <body class="bg-gray-50 text-gray-900 transition-colors duration-300">
-    <!-- অফলাইন স্ট্যাটাস বার -->
     <div id="offline-indicator" class="fixed top-0 left-0 w-full bg-rose-600 text-white text-[10px] text-center py-1 font-bold z-[1000] uppercase tracking-wider">
-        আপনি অফলাইনে আছেন - ডাটা সংরক্ষিত হচ্ছে
+        আপনি অফলাইনে আছেন - ডাটা ডিভাইসে সংরক্ষিত হচ্ছে
     </div>
 
     <div id="root"></div>
@@ -60,7 +59,6 @@
     <script type="module" src="./index.tsx"></script>
     
     <script>
-        // অফলাইন/অনলাইন হ্যান্ডলার
         function updateOnlineStatus() {
             if (navigator.onLine) {
                 document.body.classList.remove('is-offline');
@@ -72,24 +70,15 @@
         window.addEventListener('offline', updateOnlineStatus);
         updateOnlineStatus();
 
-        // Service Worker Registration
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('./sw.js')
+                // './sw.js' সরাসরি ব্যবহার করা হচ্ছে
+                navigator.serviceWorker.register('sw.js')
                     .then(function(reg) {
-                        console.log('SW success:', reg.scope);
-                        // যখন আপডেট পাওয়া যাবে
-                        reg.onupdatefound = () => {
-                            const installingWorker = reg.installing;
-                            installingWorker.onstatechange = () => {
-                                if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                    console.log('New version available. Refresh to update.');
-                                }
-                            };
-                        };
+                        console.log('Service Worker Registered');
                     })
                     .catch(function(err) {
-                        console.warn('SW failed:', err.message);
+                        console.warn('SW failed:', err);
                     });
             });
         }
