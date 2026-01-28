@@ -12,7 +12,7 @@
     <title>আমার খাতা - ব্যক্তিগত হিসাব</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        tailwind.config = {
+        window.tailwind.config = {
           darkMode: 'class',
           theme: {
             extend: {
@@ -51,25 +51,30 @@
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
     <script>
+        // সার্ভিস ওয়ার্কার রেজিস্ট্রেশন লজিক
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                // রেজিস্ট্রেশন করার আগে অরিজিন চেক করা হচ্ছে
-                const swPath = './sw.js';
-                navigator.serviceWorker.register(swPath)
+                // Origin mismatch এরর এড়াতে আপেক্ষিক পাথ ব্যবহার
+                const swUrl = new URL('./sw.js', window.location.href).href;
+                
+                navigator.serviceWorker.register(swUrl)
                     .then(reg => {
-                        console.log('Service Worker Registered');
+                        console.log('Service Worker Registered successfully');
                         reg.onupdatefound = () => {
                             const installingWorker = reg.installing;
-                            installingWorker.onstatechange = () => {
-                                if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                    window.location.reload();
-                                }
-                            };
+                            if (installingWorker) {
+                                installingWorker.onstatechange = () => {
+                                    if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                        console.log('New content is available; please refresh.');
+                                        // ইচ্ছা করলে এখানে একটি নোটিফিকেশন দেখানো যায়
+                                    }
+                                };
+                            }
                         };
                     })
                     .catch(err => {
-                        // যদি প্রিভিউ মোডে এরর দেয় তবে ইগনোর করা হবে, কিন্তু আসল সাইটে কাজ করবে
-                        console.warn('Service Worker registration skipped or failed:', err.message);
+                        // AI Studio প্রিভিউতে এই এরর আসা স্বাভাবিক, আসল সাইটে হবে না
+                        console.warn('SW registration failed (expected in some preview modes):', err.message);
                     });
             });
         }
