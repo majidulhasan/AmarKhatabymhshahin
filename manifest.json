@@ -3,7 +3,7 @@
   "name": "আমার খাতা - ব্যক্তিগত হিসাব",
   "short_name": "আমার খাতা",
   "description": "অফলাইন ব্যক্তিগত আয়-ব্যয় ট্র্যাকার",
-  "start_url": "https://amar-khatabymhshahin.vercel.app/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#4f46e5",
