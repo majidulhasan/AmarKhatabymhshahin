@@ -51,30 +51,28 @@
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
     <script>
-        // সার্ভিস ওয়ার্কার রেজিস্ট্রেশন লজিক
+        // Service Worker Registration
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                // Origin mismatch এরর এড়াতে আপেক্ষিক পাথ ব্যবহার
-                const swUrl = new URL('./sw.js', window.location.href).href;
-                
-                navigator.serviceWorker.register(swUrl)
-                    .then(reg => {
-                        console.log('Service Worker Registered successfully');
-                        reg.onupdatefound = () => {
-                            const installingWorker = reg.installing;
+            window.addEventListener('load', function() {
+                // সরাসরি পাথ ব্যবহার করা হচ্ছে যা স্যান্ডবক্সড এনভায়রনমেন্টে নিরাপদ
+                navigator.serviceWorker.register('sw.js')
+                    .then(function(registration) {
+                        console.log('Service Worker registered successfully');
+                        
+                        registration.onupdatefound = function() {
+                            const installingWorker = registration.installing;
                             if (installingWorker) {
-                                installingWorker.onstatechange = () => {
+                                installingWorker.onstatechange = function() {
                                     if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                        console.log('New content is available; please refresh.');
-                                        // ইচ্ছা করলে এখানে একটি নোটিফিকেশন দেখানো যায়
+                                        console.log('New update available, please reload.');
                                     }
                                 };
                             }
                         };
                     })
-                    .catch(err => {
-                        // AI Studio প্রিভিউতে এই এরর আসা স্বাভাবিক, আসল সাইটে হবে না
-                        console.warn('SW registration failed (expected in some preview modes):', err.message);
+                    .catch(function(error) {
+                        // এরর হলেও যাতে মূল অ্যাপ লোড হয়
+                        console.warn('SW registration skipped:', error.message);
                     });
             });
         }
