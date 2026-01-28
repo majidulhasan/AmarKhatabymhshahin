@@ -1,74 +1,68 @@
-const CACHE_NAME = 'amar-khata-v3.1';
-const PRECACHE_ASSETS = [
-  './',
-  './index.html',
-  './manifest.json',
+const CACHE_NAME = 'amar-khata-v5.0';
+const STATIC_ASSETS = [
+  '/',
+  '/index.html',
+  '/manifest.json',
   'https://cdn.tailwindcss.com',
   'https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap'
 ];
 
-// Install: প্রয়োজনীয় ফাইল ক্যাশে রাখা
+// Install Event: মূল ফাইলগুলো ক্যাশ করা
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('Pre-caching shell assets');
-      return cache.addAll(PRECACHE_ASSETS);
+      console.log('Pre-caching assets');
+      return cache.addAll(STATIC_ASSETS);
     })
   );
   self.skipWaiting();
 });
 
-// Activate: পুরাতন ক্যাশ পরিষ্কার করা
+// Activate Event: পুরাতন ক্যাশ ডিলিট করা
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
+    caches.keys().then((keys) => {
       return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
-        })
+        keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
       );
     })
   );
   return self.clients.claim();
 });
 
-// Fetch: অফলাইন সাপোর্ট এবং ডাইনামিক ক্যাশিং
+// Fetch Event: নেটওয়ার্ক ফেইল করলে ক্যাশ থেকে দেওয়া
 self.addEventListener('fetch', (event) => {
-  // শুধুমাত্র GET রিকোয়েস্ট ক্যাশ করা হবে
   if (event.request.method !== 'GET') return;
+
+  const url = new URL(event.request.url);
 
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      // যদি ক্যাশে থাকে, তবে সেটিই ফেরত দাও
       if (cachedResponse) {
-        // ব্যাকগ্রাউন্ডে নেটওয়ার্ক থেকে আপডেট চেক করো (Stale-While-Revalidate)
+        // ব্যাকগ্রাউন্ডে আপডেট চেক করা (Stale-while-revalidate)
         fetch(event.request).then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
           }
         }).catch(() => {});
-        
         return cachedResponse;
       }
 
-      // ক্যাশে না থাকলে নেটওয়ার্ক থেকে আনো এবং ক্যাশে রাখো
       return fetch(event.request).then((networkResponse) => {
-        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic' && !event.request.url.includes('esm.sh') && !event.request.url.includes('cdn.tailwindcss.com')) {
-          return networkResponse;
+        if (!networkResponse || networkResponse.status !== 200) return networkResponse;
+
+        // esm.sh বা অন্য এক্সটার্নাল লাইব্রেরি হলে ক্যাশে রাখা
+        if (url.origin.includes('esm.sh') || url.origin.includes('tailwindcss.com') || url.origin.includes('fonts.gstatic.com')) {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
         }
-
-        const responseToCache = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
-        });
-
         return networkResponse;
       }).catch(() => {
-        // অফলাইনে থাকলে এবং ক্যাশে না থাকলে index.html ফেরত দাও (SPA এর জন্য)
+        // অফলাইনে থাকলে index.html ফেরত দেওয়া
         if (event.request.mode === 'navigate') {
-          return caches.match('./index.html');
+          return caches.match('/index.html') || caches.match('./index.html');
         }
       });
     })
