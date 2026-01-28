@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#4f46e5">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="https://api.dicebear.com/7.x/initials/svg?seed=AK&backgroundColor=4f46e5">
     
@@ -25,20 +25,28 @@
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Hind Siliguri', sans-serif; -webkit-tap-highlight-color: transparent; user-select: none; }
+        body { 
+            font-family: 'Hind Siliguri', sans-serif; 
+            -webkit-tap-highlight-color: transparent; 
+            overscroll-behavior-y: contain;
+        }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         @keyframes progress { 0% { transform: translateX(-100%); } 50% { transform: translateX(0); } 100% { transform: translateX(100%); } }
         .animate-progress { animation: progress 1s infinite linear; }
+        
         #offline-indicator { 
             display: none; 
             position: fixed; 
             top: 0; left: 0; width: 100%; 
-            background: #e11d48; color: white; 
-            text-align: center; font-size: 10px; padding: 4px 0;
+            background: #6366f1; color: white; 
+            text-align: center; font-size: 11px; padding: 6px 0;
             z-index: 9999; font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
-        body.is-offline #offline-indicator { display: block; }
+        body.is-offline #offline-indicator { 
+            display: block;
+        }
     </style>
     <script type="importmap">
 {
@@ -57,7 +65,7 @@
 <link rel="stylesheet" href="/index.css">
 </head>
 <body class="bg-gray-50 text-gray-900 transition-colors duration-300">
-    <div id="offline-indicator">অফলাইন মোড: ডাটা ডিভাইসে সংরক্ষিত হচ্ছে</div>
+    <div id="offline-indicator">অফলাইন মোড: ডাটা ডিভাইসে সুরক্ষিত আছে</div>
 
     <div id="root"></div>
 
@@ -65,20 +73,26 @@
     
     <script>
         function updateOnlineStatus() {
-            document.body.classList.toggle('is-offline', !navigator.onLine);
+            const isOffline = !navigator.onLine;
+            document.body.classList.toggle('is-offline', isOffline);
         }
         window.addEventListener('online', updateOnlineStatus);
         window.addEventListener('offline', updateOnlineStatus);
         updateOnlineStatus();
 
-        // সহজতম সার্ভিস ওয়ার্কার রেজিস্ট্রেশন যা সব এনভায়রনমেন্টে কাজ করবে
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(reg => console.log('SW Registered:', reg.scope))
+                // ব্রাউজারের অরিজিন মিসম্যাচ এরর এড়াতে ডাইনামিক পাথ জেনারেট করা
+                const swUrl = new URL('sw.js', window.location.href).href;
+                
+                navigator.serviceWorker.register(swUrl)
+                    .then(reg => {
+                        console.log('অফলাইন সার্ভিস সক্রিয় হয়েছে: ', reg.scope);
+                    })
                     .catch(err => {
-                        console.warn('SW failed, retrying without dot slash...');
-                        navigator.serviceWorker.register('sw.js').catch(e => console.error('SW final fail:', e));
+                        console.warn('সার্ভিস ওয়ার্কার ফেল করেছে, তবে অ্যাপটি কাজ করবে। এরর:', err);
+                        // যদি ফেল করে, তবে অল্টারনেটিভ সরাসরি পাথ ট্রাই করা
+                        navigator.serviceWorker.register('sw.js').catch(() => {});
                     });
             });
         }
