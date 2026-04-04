@@ -1,5 +1,4 @@
 
-import React from 'react';
 import { ThemeColor } from './types';
 
 export const PRESET_COLORS: Record<string, string> = {
@@ -97,11 +96,17 @@ export const translations: any = {
     settleWarn: 'আপনি কি এই লেনদেনটি সম্পন্ন হিসেবে মার্ক করতে চান? এটি আপনার পেন্ডিং লিস্ট থেকে সরে যাবে।',
     yesSettle: 'হ্যাঁ, পরিশোধ হয়েছে',
     addPayment: 'পেমেন্ট যোগ করুন',
+    editPayment: 'পেমেন্ট সংশোধন',
     remaining: 'অবশিষ্ট',
     paidAmount: 'পরিশোধিত',
     paymentHistory: 'পেমেন্ট হিস্ট্রি',
     editCat: 'ক্যাটাগরি এডিট',
-    deleteCat: 'ক্যাটাগরি ডিলেট'
+    deleteCat: 'ক্যাটাগরি ডিলেট',
+    selectCatError: 'দয়া করে একটি ক্যাটাগরি সিলেক্ট করুন',
+    settledFilter: 'পরিশোধিত',
+    paidStamp: 'পরিশোধিত',
+    restoreSuccess: 'ডাটা সফলভাবে রিস্টোর হয়েছে!',
+    restoreError: 'ভুল ফাইল ফরম্যাট!'
   },
   en: {
     appTitle: 'Amar Khata',
@@ -168,10 +173,16 @@ export const translations: any = {
     settleWarn: 'Are you sure you want to mark this transaction as settled? It will be moved from your pending list.',
     yesSettle: 'Yes, Settle Now',
     addPayment: 'Add Payment',
+    editPayment: 'Edit Payment',
     remaining: 'Remaining',
     paidAmount: 'Paid',
     paymentHistory: 'Payment History',
     editCat: 'Edit Category',
-    deleteCat: 'Delete Category'
+    deleteCat: 'Delete Category',
+    selectCatError: 'Please select a category',
+    settledFilter: 'Settled',
+    paidStamp: 'PAID',
+    restoreSuccess: 'Data restored successfully!',
+    restoreError: 'Invalid file format!'
   }
 };

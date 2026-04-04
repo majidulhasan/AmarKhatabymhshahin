@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   LayoutDashboard, 
   History, 
@@ -44,11 +44,12 @@ import {
   History as HistoryIcon,
   RefreshCcw,
   HelpCircle,
-  BookOpen
+  BookOpen,
+  CheckCircle as SuccessIcon
 } from 'lucide-react';
 import { storage } from './services/storage';
 import { Transaction, Loan, StorageData, TransactionType, LoanType, ThemeColor, Category, MonthlyNote, LoanStatus, LoanPayment } from './types';
-import { LOAN_STATUS_LABELS } from './constants';
+import { LOAN_STATUS_LABELS, PRESET_COLORS, THEME_MAP, THEME_GRADIENT, translations } from './constants';
 import { 
   BarChart, 
   Bar, 
@@ -64,180 +65,19 @@ import {
 
 type ActiveTab = 'dashboard' | 'history' | 'summary' | 'reports' | 'notes' | 'settings';
 
-const PRESET_COLORS: Record<string, string> = {
-  indigo: '#4f46e5',
-  emerald: '#10b981',
-  rose: '#f43f5e',
-  amber: '#f59e0b',
+const getLocalDateStr = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
-const THEME_MAP: Record<ThemeColor, string> = {
-  indigo: 'bg-indigo-600 shadow-indigo-200 text-indigo-600 dark:text-indigo-400',
-  emerald: 'bg-emerald-600 shadow-emerald-200 text-emerald-600 dark:text-emerald-400',
-  rose: 'bg-rose-600 shadow-rose-200 text-rose-600 dark:text-rose-400',
-  amber: 'bg-amber-600 shadow-amber-200 text-amber-600 dark:text-amber-400',
-  custom: 'bg-[var(--theme-color)] shadow-gray-200 text-[var(--theme-color)] dark:text-[var(--theme-color)]',
-};
-
-const THEME_GRADIENT: Record<ThemeColor, string> = {
-  indigo: 'from-indigo-600 to-violet-700',
-  emerald: 'from-emerald-600 to-teal-700',
-  rose: 'from-rose-600 to-pink-700',
-  amber: 'from-amber-600 to-orange-700',
-  custom: 'from-[var(--theme-color)] to-black/30',
-};
-
-const translations: any = {
-  bn: {
-    appTitle: 'আমার খাতা',
-    diaryTitle: 'আমার ডিজিটাল ডায়েরি',
-    home: 'হোম',
-    history: 'হিসাব',
-    summary: 'সংক্ষিপ্ত',
-    reports: 'রিপোর্ট',
-    settings: 'সেটিং',
-    currentBalance: 'বর্তমান ব্যালেন্স',
-    totalIncome: 'মোট আয়',
-    totalExpense: 'মোট ব্যয়',
-    todayIncome: 'আজকের আয়',
-    todayExpense: 'আজকের ব্যয়',
-    loanGiven: 'পাওনা টাকা',
-    loanTaken: 'ধার নেওয়া',
-    recentHistory: 'সাম্প্রতিক হিসাব',
-    seeAll: 'সব দেখুন',
-    language: 'অ্যাপের ভাষা',
-    devProfile: 'ডেভেলপার পরিচিতি',
-    usageGuide: 'ব্যবহার বিধি',
-    backup: 'ব্যাকআপ ডাউনলোড',
-    restore: 'ব্যাকআপ রিস্টোর',
-    themeColor: 'থিম কালার',
-    reminder: 'লোন রিমাইন্ডার',
-    save: 'সংরক্ষণ করুন',
-    update: 'আপডেট করুন',
-    addEntry: 'হিসাব যোগ করুন',
-    editEntry: 'হিসাব সংশোধন',
-    monthlyNote: 'নোটস',
-    devName: 'মো: মাজিদুল হাসান {শাহীন}',
-    close: 'বন্ধ করুন',
-    monthlySummary: 'মাসিক সারসংক্ষেপ',
-    balance: 'অবশিষ্ট',
-    netBalance: 'নিট ব্যালেন্স',
-    weekly: 'সাপ্তাহিক',
-    monthly: 'মাসিক',
-    yearly: 'বাৎসরিক',
-    customRange: 'কাস্টম',
-    category: 'ক্যাটাগরি',
-    manageCategories: 'ক্যাটাগরি ম্যানেজ',
-    startDate: 'শুরুর তারিখ',
-    endDate: 'শেষ তারিখ',
-    allCategories: 'সব ক্যাটাগরি',
-    stats: 'পরিসংখ্যান',
-    finance: 'আয়-ব্যয়',
-    loans: 'লেনদেন',
-    netLoan: 'নিট ঋণ',
-    confirmDelete: 'আপনি কি নিশ্চিত?',
-    deleteWarn: 'এই হিসাবটি ডিলেট করলে আর ফিরে পাওয়া যাবে না।',
-    deleteBtn: 'হ্যাঁ, ডিলেট করুন',
-    cancelBtn: 'না, থাক',
-    noteDetails: 'বিস্তারিত তথ্য',
-    transactionNotes: 'নোটসমূহ',
-    dateLabel: 'তারিখ',
-    typeLabel: 'ধরণ',
-    incomeType: 'আয়',
-    expenseType: 'ব্যয়',
-    loanTakenType: 'ধার গ্রহণ',
-    loanGivenType: 'ধার প্রদান',
-    closingBalance: 'সমাপনী ব্যালেন্স',
-    settle: 'পরিশোধ সম্পন্ন',
-    confirmSettle: 'পরিশোধ নিশ্চিত করুন',
-    settleWarn: 'আপনি কি এই লেনদেনটি সম্পন্ন হিসেবে মার্ক করতে চান? এটি আপনার পেন্ডিং লিস্ট থেকে সরে যাবে।',
-    yesSettle: 'হ্যাঁ, পরিশোধ হয়েছে',
-    addPayment: 'পেমেন্ট যোগ করুন',
-    editPayment: 'পেমেন্ট সংশোধন',
-    remaining: 'অবশিষ্ট',
-    paidAmount: 'পরিশোধিত',
-    paymentHistory: 'পেমেন্ট হিস্ট্রি',
-    editCat: 'ক্যাটাগরি এডিট',
-    deleteCat: 'ক্যাটাগরি ডিলেট',
-    selectCatError: 'দয়া করে একটি ক্যাটাগরি সিলেক্ট করুন',
-    settledFilter: 'পরিশোধিত',
-    paidStamp: 'পরিশোধিত'
-  },
-  en: {
-    appTitle: 'Amar Khata',
-    diaryTitle: 'My Digital Diary',
-    home: 'Home',
-    history: 'History',
-    summary: 'Summary',
-    reports: 'Reports',
-    settings: 'Settings',
-    currentBalance: 'Current Balance',
-    totalIncome: 'Total Income',
-    totalExpense: 'Total Expense',
-    todayIncome: 'Today Income',
-    todayExpense: 'Today Expense',
-    loanGiven: 'Money Owed',
-    loanTaken: 'Money Borrowed',
-    recentHistory: 'Recent Transactions',
-    seeAll: 'See All',
-    language: 'App Language',
-    devProfile: 'Developer Profile',
-    usageGuide: 'Usage Guide',
-    backup: 'Download Backup',
-    restore: 'Restore Backup',
-    themeColor: 'Theme Color',
-    reminder: 'Loan Reminder',
-    save: 'Save Changes',
-    update: 'Update Entry',
-    addEntry: 'Add Entry',
-    editEntry: 'Edit Entry',
-    monthlyNote: 'Notes',
-    devName: 'Md. Majidul Hasan {Shahin}',
-    close: 'Close',
-    monthlySummary: 'Monthly Summary',
-    balance: 'Balance',
-    netBalance: 'Net Balance',
-    weekly: 'Weekly',
-    monthly: 'Monthly',
-    yearly: 'Yearly',
-    customRange: 'Custom',
-    category: 'Category',
-    manageCategories: 'Manage Categories',
-    startDate: 'Start Date',
-    endDate: 'End Date',
-    allCategories: 'All Categories',
-    stats: 'Statistics',
-    finance: 'Finance',
-    loans: 'Dealings',
-    netLoan: 'Net Loan',
-    confirmDelete: 'Are you sure?',
-    deleteWarn: 'If you delete this record, it cannot be recovered.',
-    deleteBtn: 'Yes, Delete',
-    cancelBtn: 'No, Keep',
-    noteDetails: 'Detailed Info',
-    transactionNotes: 'Notes',
-    dateLabel: 'Date',
-    typeLabel: 'Type',
-    incomeType: 'Income',
-    expenseType: 'Expense',
-    loanTakenType: 'Loan Taken',
-    loanGivenType: 'Loan Given',
-    closingBalance: 'Closing Balance',
-    settle: 'Mark Settle',
-    confirmSettle: 'Confirm Settlement',
-    settleWarn: 'Are you sure you want to mark this transaction as settled? It will be moved from your pending list.',
-    yesSettle: 'Yes, Settle Now',
-    addPayment: 'Add Payment',
-    editPayment: 'Edit Payment',
-    remaining: 'Remaining',
-    paidAmount: 'Paid',
-    paymentHistory: 'Payment History',
-    editCat: 'Edit Category',
-    deleteCat: 'Delete Category',
-    selectCatError: 'Please select a category',
-    settledFilter: 'Settled',
-    paidStamp: 'PAID'
-  }
+const getLocalMonthStr = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
 };
 
 export default function App() {
@@ -254,6 +94,7 @@ export default function App() {
   const [showDevModal, setShowDevModal] = useState(false);
   const [showUsageModal, setShowUsageModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const lang = data.settings.language || 'bn';
   const t = (key: string) => translations[lang][key] || key;
@@ -277,6 +118,11 @@ export default function App() {
     }
     root.style.setProperty('--theme-color', activeColorHex);
   }, [data, isDarkMode, activeColorHex]);
+
+  const triggerToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3500);
+  };
 
   const updateSettings = (updates: Partial<StorageData['settings']>) => {
     setIsLoading(true);
@@ -304,7 +150,7 @@ export default function App() {
       return s + (l.amount - received);
     }, 0);
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getLocalDateStr();
     const todayIncome = data.khata.transactions.filter(t => t.type === 'INCOME' && t.date === todayStr).reduce((s, t) => s + t.amount, 0);
     const todayExpense = data.khata.transactions.filter(t => t.type === 'EXPENSE' && t.date === todayStr).reduce((s, t) => s + t.amount, 0);
 
@@ -434,8 +280,19 @@ export default function App() {
         </div>
       )}
 
+      {toast && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[200] animate-in slide-in-from-top duration-300 px-4 w-full max-w-xs">
+          <div className={`flex items-center gap-3 p-4 rounded-2xl shadow-2xl backdrop-blur-xl border ${toast.type === 'success' ? 'bg-emerald-50/90 dark:bg-emerald-900/40 border-emerald-100 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400' : 'bg-rose-50/90 dark:bg-rose-900/40 border-rose-100 dark:border-rose-800 text-rose-600 dark:text-rose-400'}`}>
+            <div className={`shrink-0 p-1.5 rounded-full ${toast.type === 'success' ? 'bg-emerald-100 dark:bg-emerald-800' : 'bg-rose-100 dark:bg-rose-800'}`}>
+              {toast.type === 'success' ? <SuccessIcon size={16} /> : <AlertCircle size={16} />}
+            </div>
+            <p className="text-sm font-black tracking-tight">{toast.message}</p>
+          </div>
+        </div>
+      )}
+
       <header className="px-6 py-5 flex justify-between items-center bg-white dark:bg-gray-800 border-b dark:border-gray-700 sticky top-0 z-40 backdrop-blur-lg bg-opacity-80 dark:bg-opacity-80">
-        <div>
+        <div onClick={() => setActiveTab('dashboard')} className="cursor-pointer">
           <p className={`text-[10px] font-bold uppercase tracking-widest ${THEME_MAP[currentTheme].split(' ')[2]}`}>{t('diaryTitle')}</p>
           <h1 className="text-xl font-extrabold tracking-tight text-gray-900 dark:text-gray-100">{t('appTitle')}</h1>
         </div>
@@ -452,7 +309,17 @@ export default function App() {
         {activeTab === 'notes' && <NotesView t={t} notes={data.khata.notes} setNotes={(n:any) => setData(p => ({...p, khata: {...p.khata, notes: n}}))} theme={currentTheme} />}
         {activeTab === 'settings' && (
           <SettingsView 
-            t={t} lang={lang} settings={data.settings} onUpdateSettings={updateSettings} onExport={storage.exportToJSON} onImport={async (e:any) => { if (e.target.files[0]) { await storage.importFromJSON(e.target.files[0]); setData(storage.getData()); } }} theme={currentTheme} onShowDevProfile={() => setShowDevModal(true)} onManageCategories={() => setShowCategoryManager(true)} onShowUsageGuide={() => setShowUsageModal(true)}
+            t={t} lang={lang} settings={data.settings} onUpdateSettings={updateSettings} onExport={storage.exportToJSON} onImport={async (e:any) => { 
+              if (e.target.files[0]) { 
+                try {
+                  await storage.importFromJSON(e.target.files[0]); 
+                  setData(storage.getData()); 
+                  triggerToast(t('restoreSuccess'));
+                } catch (err) {
+                  triggerToast(t('restoreError'), 'error');
+                }
+              } 
+            }} theme={currentTheme} onShowDevProfile={() => setShowDevModal(true)} onManageCategories={() => setShowCategoryManager(true)} onShowUsageGuide={() => setShowUsageModal(true)}
           />
         )}
       </main>
@@ -544,7 +411,7 @@ function PaidStamp({ t }: { t: any }) {
 }
 
 function DashboardView({ t, lang, totals, loans, transactions, theme, onShowAll, onEdit, onDelete, onShowDetail, onOpenSettleConfirm, onOpenPaymentModal }: any) {
-  const todayDues = loans.filter((l:any) => l.status === 'PENDING' && l.dueDate === new Date().toISOString().split('T')[0]);
+  const todayDues = loans.filter((l:any) => l.status === 'PENDING' && l.dueDate === getLocalDateStr());
   const gradientClass = THEME_GRADIENT[theme as ThemeColor];
   const accentText = THEME_MAP[theme as ThemeColor].split(' ')[2];
 
@@ -586,11 +453,34 @@ function DashboardView({ t, lang, totals, loans, transactions, theme, onShowAll,
       </div>
 
       {todayDues.length > 0 && (
-        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-5 rounded-3xl">
-          <div className="flex items-center gap-3 mb-3"><div className="bg-amber-100 dark:bg-amber-800 p-2 rounded-full"><AlertCircle className="text-amber-600 dark:text-amber-400" size={18}/></div><h3 className="font-bold text-amber-900 dark:text-amber-100">{t('reminder')}</h3></div>
-          {todayDues.map((d:any) => (
-            <div key={d.id} className="flex justify-between items-center text-sm py-1 font-medium"><span className="text-amber-800 dark:text-amber-300 truncate mr-2">{d.person}</span><span className="text-amber-900 dark:text-amber-100 font-black shrink-0">৳ {d.amount}</span></div>
-          ))}
+        <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800 p-6 rounded-[2.5rem] shadow-sm">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="bg-amber-100 dark:bg-amber-800 p-2.5 rounded-2xl">
+              <AlertCircle className="text-amber-600 dark:text-amber-400" size={20}/>
+            </div>
+            <h3 className="font-black text-sm uppercase tracking-wider text-amber-900 dark:text-amber-100">{t('reminder')}</h3>
+          </div>
+          <div className="space-y-3">
+            {todayDues.map((d:any) => {
+              const paid = d.payments?.reduce((s:number, p:any) => s + p.amount, 0) || 0;
+              const remaining = Math.max(0, d.amount - paid);
+              return (
+                <div key={d.id} className="bg-white/60 dark:bg-gray-800/60 p-4 rounded-2xl flex justify-between items-center shadow-xs border border-amber-50 dark:border-amber-900/30">
+                  <div className="flex flex-col">
+                    <span className="text-sm font-black text-amber-900 dark:text-amber-100 truncate max-w-[120px]">{d.person}</span>
+                    <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 uppercase">{d.type === 'TAKEN' ? t('loanTakenType') : t('loanGivenType')}</span>
+                  </div>
+                  <div className="text-right flex flex-col items-end">
+                    <span className="text-xl font-black text-amber-900 dark:text-amber-100 leading-none">৳ {remaining.toLocaleString(lang === 'bn' ? 'bn-BD' : 'en-US')}</span>
+                    {paid > 0 && (
+                      <p className="text-[10px] text-amber-900/40 font-bold line-through mt-0.5">৳ {d.amount.toLocaleString(lang === 'bn' ? 'bn-BD' : 'en-US')}</p>
+                    )}
+                    <p className="text-[8px] font-bold text-amber-600/60 uppercase mt-0.5">{lang === 'bn' ? 'আজ পরিশোধযোগ্য' : 'Due Today'}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -601,6 +491,7 @@ function DashboardView({ t, lang, totals, loans, transactions, theme, onShowAll,
             const isSettled = item.status && item.status !== 'PENDING';
             const paid = item.isLoan ? (item.payments?.reduce((s:number, p:any) => s + p.amount, 0) || 0) : 0;
             const remaining = item.isLoan ? Math.max(0, item.amount - paid) : 0;
+            const isLoss = (item.type === 'EXPENSE' || (item.isLoan && item.type === 'TAKEN'));
             
             return (
               <div key={item.id} onClick={() => onShowDetail(item)} className={`relative overflow-hidden bg-white dark:bg-gray-800 p-4 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm transition-all hover:scale-[1.01] dark:hover:bg-gray-750 cursor-pointer ${isSettled ? 'opacity-70' : ''}`}>
@@ -611,21 +502,21 @@ function DashboardView({ t, lang, totals, loans, transactions, theme, onShowAll,
                       {item.isLoan ? <HandCoins size={20} /> : item.type === 'INCOME' ? <TrendingUp size={20} /> : <TrendingDown size={20} />}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-sm leading-tight text-gray-900 dark:text-gray-100 truncate">{item.isLoan ? item.person : item.category} {item.isLoan && (item.type === 'TAKEN' ? (lang === 'en' ? '(Taken)' : '(ঋণ গ্রহণ)') : (lang === 'en' ? '(Given)' : '(ঋণ প্রদান)'))}</p>
+                      <p className="font-bold text-sm leading-tight text-gray-900 dark:text-gray-100 truncate">{item.isLoan ? item.person : item.category}</p>
                       <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">{new Date(item.date).toLocaleDateString(lang === 'bn' ? 'bn-BD' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                     </div>
                   </div>
                   
-                  <div className="flex flex-col items-end gap-1 shrink-0">
-                    <div className="text-right">
-                      <p className={`font-black text-base whitespace-nowrap ${ (item.type === 'INCOME' || (item.isLoan && item.type === 'GIVEN')) ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                        { (item.type === 'INCOME' || (item.isLoan && item.type === 'GIVEN')) ? '+' : '-'} ৳ {(item.isLoan ? (isSettled ? item.amount : remaining) : item.amount).toLocaleString(lang === 'bn' ? 'bn-BD' : 'en-US')}
+                  <div className="flex flex-col items-end gap-0.5 shrink-0">
+                    <div className="text-right flex flex-col items-end">
+                      <p className={`font-black text-2xl leading-none tracking-tight ${ !isLoss ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                        ৳ {(item.isLoan ? (isSettled ? 0 : remaining) : item.amount).toLocaleString(lang === 'bn' ? 'bn-BD' : 'en-US')}
                       </p>
                       {item.isLoan && (paid > 0 || isSettled) && (
-                        <p className="text-[9px] text-gray-400 font-bold italic line-through">৳ {item.amount.toLocaleString(lang === 'bn' ? 'bn-BD' : 'en-US')}</p>
+                        <p className="text-[11px] text-gray-400 font-bold italic line-through mt-0.5">৳ {item.amount.toLocaleString(lang === 'bn' ? 'bn-BD' : 'en-US')}</p>
                       )}
                     </div>
-                    <div className="flex items-center gap-1.5 mt-0.5" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-1.5 mt-2" onClick={(e) => e.stopPropagation()}>
                         {item.isLoan && !isSettled && (
                           <>
                             <button onClick={() => onOpenPaymentModal(item)} className="w-8 h-8 flex items-center justify-center text-amber-500 hover:text-amber-600 dark:text-amber-400 dark:hover:text-amber-300 transition-colors bg-amber-50 dark:bg-amber-900/20 rounded-lg" title={t('addPayment')}><PlusCircle size={15} /></button>
@@ -638,7 +529,7 @@ function DashboardView({ t, lang, totals, loans, transactions, theme, onShowAll,
                   </div>
                 </div>
                 {(item.reason || item.note) && (
-                  <div className="mt-2 w-full text-left bg-gray-50 dark:bg-gray-700/40 px-3 py-1.5 rounded-xl border border-gray-100 dark:border-gray-600 transition-colors active:bg-gray-100 overflow-hidden">
+                  <div className="mt-3 w-full text-left bg-gray-50 dark:bg-gray-700/40 px-3 py-2 rounded-xl border border-gray-100 dark:border-gray-700 transition-colors active:bg-gray-100 overflow-hidden">
                     <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium truncate italic">
                       "{item.reason || item.note}"
                     </p>
@@ -776,19 +667,21 @@ function HistoryView({ t, lang, transactions, loans, onDelete, onEdit, theme, on
           const isSettled = item.status && item.status !== 'PENDING';
           const paid = item.isLoan ? (item.payments?.reduce((s:number, p:any) => s + p.amount, 0) || 0) : 0;
           const remaining = item.isLoan ? Math.max(0, item.amount - paid) : 0;
+          const isLoss = (item.type === 'EXPENSE' || (item.isLoan && item.type === 'TAKEN'));
+          
           return (
             <div key={item.id} onClick={() => onShowDetail(item)} className={`relative overflow-hidden bg-white dark:bg-gray-800 p-5 rounded-[2rem] border border-gray-100 dark:border-gray-700 shadow-sm transition-all dark:hover:bg-gray-750 cursor-pointer ${isSettled ? 'opacity-70' : ''}`}>
               {isSettled && <PaidStamp t={t} />}
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-4 flex-1 min-w-0">
                   <div className={`p-3 rounded-2xl shrink-0 ${item.isLoan ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300' : item.type === 'INCOME' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-blue-300' : 'bg-rose-50 text-rose-600 dark:bg-rose-900/40 dark:text-rose-300'}`}>{item.isLoan ? <HandCoins size={20}/> : item.type === 'INCOME' ? <TrendingUp size={20}/> : <TrendingDown size={20}/>}</div>
-                  <div className="flex-1 min-w-0"><p className="font-bold text-sm leading-tight text-gray-900 dark:text-gray-100 truncate">{item.isLoan ? item.person : item.category} {item.isLoan && (item.type === 'TAKEN' ? (lang === 'en' ? ' (Taken)' : ' (ধার নেওয়া)') : (lang === 'en' ? ' (Given)' : ' (ধার দেওয়া)'))}</p><p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 font-medium">{new Date(item.date).toLocaleDateString(lang === 'bn' ? 'bn-BD' : 'en-US')}</p></div>
+                  <div className="flex-1 min-w-0"><p className="font-bold text-sm leading-tight text-gray-900 dark:text-gray-100 truncate">{item.isLoan ? item.person : item.category}</p><p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 font-medium">{new Date(item.date).toLocaleDateString(lang === 'bn' ? 'bn-BD' : 'en-US')}</p></div>
                 </div>
                 <div className="text-right flex items-center gap-4 shrink-0">
-                  <div className="text-right">
-                    <p className={`font-black whitespace-nowrap text-base ${item.type === 'INCOME' || (item.isLoan && item.type === 'GIVEN') ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>৳ {(item.isLoan ? (isSettled ? item.amount : remaining) : item.amount).toLocaleString(lang === 'bn' ? 'bn-BD' : 'en-US')}</p>
-                    {item.isLoan && paid > 0 && !isSettled && (
-                      <p className="text-[9px] text-gray-400 font-bold italic line-through">৳ {item.amount.toLocaleString(lang === 'bn' ? 'bn-BD' : 'en-US')}</p>
+                  <div className="text-right flex flex-col items-end">
+                    <p className={`font-black whitespace-nowrap text-2xl leading-none tracking-tight ${ !isLoss ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>৳ {(item.isLoan ? (isSettled ? 0 : remaining) : item.amount).toLocaleString(lang === 'bn' ? 'bn-BD' : 'en-US')}</p>
+                    {item.isLoan && (paid > 0 || isSettled) && (
+                      <p className="text-[11px] text-gray-400 font-bold italic line-through mt-0.5">৳ {item.amount.toLocaleString(lang === 'bn' ? 'bn-BD' : 'en-US')}</p>
                     )}
                   </div>
                   <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
@@ -817,8 +710,8 @@ function SummaryView({ t, lang, transactions, loans, theme }: any) {
   const [viewMode, setViewMode] = useState<'monthly' | 'yearly' | 'custom'>('monthly');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const [selectedMonth, setSelectedMonth] = useState((new Date().getMonth() + 1).toString().padStart(2, '0'));
-  const [startMonth, setStartMonth] = useState(new Date().toISOString().substring(0, 7));
-  const [endMonth, setEndMonth] = useState(new Date().toISOString().substring(0, 7));
+  const [startMonth, setStartMonth] = useState(getLocalMonthStr());
+  const [endMonth, setEndMonth] = useState(getLocalMonthStr());
   
   const accentClass = THEME_MAP[theme as ThemeColor].split(' ')[0];
   const accentText = THEME_MAP[theme as ThemeColor].split(' ')[2];
@@ -924,8 +817,8 @@ function SummaryView({ t, lang, transactions, loans, theme }: any) {
 function ReportsView({ t, lang, transactions, isDark, theme, categories }: any) {
   const [rangeType, setRangeType] = useState<'weekly' | 'monthly' | 'custom'>('monthly');
   const [catFilter, setCatFilter] = useState('all');
-  const [customStart, setCustomStart] = useState(new Date().toISOString().split('T')[0]);
-  const [customEnd, setCustomEnd] = useState(new Date().toISOString().split('T')[0]);
+  const [customStart, setCustomStart] = useState(getLocalDateStr());
+  const [customEnd, setCustomEnd] = useState(getLocalDateStr());
   const activeColorHex = useMemo(() => theme === 'custom' ? 'var(--theme-color)' : PRESET_COLORS[theme] || '#4f46e5', [theme]);
   
   const filteredTransactions = useMemo(() => transactions.filter((tr: Transaction) => { 
@@ -989,7 +882,7 @@ function ReportsView({ t, lang, transactions, isDark, theme, categories }: any) 
 }
 
 function NotesView({ t, notes, setNotes, theme }: any) {
-  const [activeMonth, setActiveMonth] = useState(new Date().toISOString().substring(0, 7));
+  const [activeMonth, setActiveMonth] = useState(getLocalMonthStr());
   const currentNote = notes.find((n: any) => n.month === activeMonth);
   const accentText = THEME_MAP[theme as ThemeColor].split(' ')[2];
   const handleSave = (text: string) => { 
@@ -1008,10 +901,11 @@ function SettingsView({ t, lang, settings, onUpdateSettings, onExport, onImport,
   const [notifPermission, setNotifPermission] = useState(Notification.permission);
   const accentClass = THEME_MAP[theme as ThemeColor].split(' ')[0];
   const accentText = THEME_MAP[theme as ThemeColor].split(' ')[2];
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-10">
       <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 p-6 shadow-sm space-y-4 transition-colors"><div className="flex items-center gap-3"><div className={`p-2 rounded-xl bg-gray-50 dark:bg-gray-700 ${accentText}`}><Languages size={20}/></div><h3 className="font-black text-sm text-gray-900 dark:text-gray-100">{t('language')}</h3></div><div className="flex gap-2 p-1 bg-gray-50 dark:bg-gray-900/50 rounded-2xl"><button onClick={() => onUpdateSettings({ language: 'bn' })} className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all ${settings.language === 'bn' ? `${accentClass} text-white shadow-md` : 'text-gray-400 dark:text-gray-500'}`}>বাংলা</button><button onClick={() => onUpdateSettings({ language: 'en' })} className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all ${settings.language === 'en' ? `${accentClass} text-white shadow-md` : 'text-gray-400 dark:text-gray-500'}`}>English</button></div></div>
-      <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 p-6 shadow-sm space-y-4 transition-colors"><div className="flex items-center gap-3"><div className={`p-2 rounded-xl bg-gray-50 dark:bg-gray-700 ${accentText}`}><Palette size={20}/></div><h3 className="font-black text-sm text-gray-900 dark:text-gray-100">{t('themeColor')}</h3></div><div className="flex flex-wrap gap-4 px-2 items-center">{(['indigo', 'emerald', 'rose', 'amber'] as ThemeColor[]).map(c => (<button key={c} onClick={() => onUpdateSettings({ themeColor: c })} className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${THEME_MAP[c].split(' ')[0]} ${settings.themeColor === c ? 'ring-4 ring-offset-4 ring-gray-200 dark:ring-gray-600' : ''}`}>{settings.themeColor === c && <Check className="text-white" size={18}/>}</button>))}<div className="flex items-center gap-3"><button onClick={() => onUpdateSettings({ themeColor: 'custom' })} className={`w-10 h-10 rounded-full flex items-center justify-center transition-all bg-gradient-to-tr from-gray-300 via-gray-100 to-gray-400 dark:from-gray-600 dark:via-gray-700 dark:to-gray-500 border border-gray-300 dark:border-gray-600 ${settings.themeColor === 'custom' ? 'ring-4 ring-offset-4 ring-gray-200 dark:ring-gray-600' : ''}`} style={settings.themeColor === 'custom' ? { backgroundColor: settings.customHex } : {}}>{settings.themeColor === 'custom' ? <Check className="text-white" size={18}/> : <Pipette className="text-gray-500 dark:text-gray-300" size={18}/>}</button>{settings.themeColor === 'custom' && (<div className="flex items-center bg-gray-50 dark:bg-gray-700 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 animate-in slide-in-from-left-2"><input type="color" value={settings.customHex || '#6366f1'} onChange={e => onUpdateSettings({ customHex: e.target.value })} className="w-6 h-6 border-none bg-transparent cursor-pointer" /><span className="text-[10px] font-bold ml-2 uppercase dark:text-gray-300">{settings.customHex}</span></div>)}</div></div></div>
+      <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 p-6 shadow-sm space-y-4 transition-colors"><div className="flex items-center gap-3"><div className={`p-2 rounded-xl bg-gray-50 dark:bg-gray-700 ${accentText}`}><Palette size={20}/></div><h3 className="font-black text-sm text-gray-900 dark:text-gray-100">{t('themeColor')}</h3></div><div className="flex flex-wrap gap-4 px-2 items-center">{(['indigo', 'emerald', 'rose', 'amber'] as ThemeColor[]).map(c => (<button key={c} onClick={() => onUpdateSettings({ themeColor: c })} className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${THEME_MAP[c].split(' ')[0]} ${settings.themeColor === c ? 'ring-4 ring-offset-4 ring-gray-200 dark:ring-gray-600' : ''}`}>{settings.themeColor === c && <Check className="text-white" size={18}/>}</button>))}<div className="flex items-center gap-3"><button onClick={() => onUpdateSettings({ themeColor: 'custom' })} className={`w-10 h-10 rounded-full flex items-center justify-center transition-all bg-gradient-to-tr from-gray-300 via-gray-100 to-gray-400 dark:from-gray-600 dark:via-gray-700 dark:to-gray-500 border border-gray-300 dark:border-gray-600 ${settings.themeColor === 'custom' ? 'ring-4 ring-offset-4 ring-gray-200 dark:ring-gray-600' : ''}`} style={settings.themeColor === 'custom' ? { backgroundColor: settings.customHex } : {}}>{settings.themeColor === 'custom' ? <Check className="text-white" size={18}/> : <Pipette className="text-gray-500 dark:text-gray-300" size={18}/>}</button>{settings.themeColor === 'custom' && (<div className="flex items-center bg-gray-50 dark:bg-gray-700 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 animate-in slide-in-from-left-2"><input type="color" value={settings.customHex || '#6366f1'} onChange={e => onUpdateSettings({ customHex: e.target.value })} className="w-6 h-6 border-none bg-transparent cursor-pointer" /><span className="text-[10px] font-bold ml-2 uppercase dark:text-gray-300">{settings.customHex}</span></div>)}</div></div></div>
       <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 p-6 shadow-sm space-y-6 transition-colors"><div className="flex items-center justify-between"><div className="flex items-center gap-3"><div className="bg-orange-50 dark:bg-orange-900/30 p-2 rounded-xl text-orange-600 dark:text-orange-400"><Bell size={20}/></div><h3 className="font-black text-sm text-gray-900 dark:text-gray-100">{t('reminder')}</h3></div><button onClick={() => onUpdateSettings({ reminderEnabled: !settings.reminderEnabled })} className={`w-12 h-6 rounded-full transition-all relative ${settings.reminderEnabled ? accentClass : 'bg-gray-200 dark:bg-gray-700'}`}><div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${settings.reminderEnabled ? 'right-1' : 'left-1'}`}></div></button></div>{settings.reminderEnabled && (<div className="space-y-4 animate-in slide-in-from-top duration-300"><div className="flex items-center justify-between bg-gray-50 dark:bg-gray-900/50 p-4 rounded-2xl"><span className="text-xs font-bold text-gray-500 dark:text-gray-400">{lang === 'bn' ? 'নোটিফিকেশন সময়' : 'Notification Time'}</span><input type="time" value={settings.reminderTime} onChange={e => onUpdateSettings({ reminderTime: e.target.value })} className={`bg-transparent border-none font-bold text-sm outline-none text-gray-900 dark:text-gray-100 dark:color-scheme-dark`} /></div>{notifPermission !== 'granted' && <button onClick={async () => { const res = await Notification.requestPermission(); setNotifPermission(res); }} className="w-full bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 text-[10px] font-black py-3 rounded-2xl border border-orange-200 dark:border-orange-800">{lang === 'bn' ? 'অনুমতি দিন (নোটিফিকেশন পেতে)' : 'Allow Notifications'}</button>}</div>)}</div>
       <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 overflow-hidden shadow-sm transition-colors"><button onClick={onManageCategories} className="w-full p-6 flex items-center gap-5 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border-b dark:border-gray-700 text-left"><div className="bg-emerald-50 dark:bg-emerald-900/30 p-3 rounded-2xl text-emerald-600 dark:text-emerald-400"><ListFilter size={20}/></div><div><p className="font-black text-sm text-gray-900 dark:text-gray-100">{t('manageCategories')}</p><p className="text-[10px] text-gray-500 dark:text-gray-400">{lang === 'bn' ? 'আয়-ব্যয় ক্যাটাগরিগুলো পরিচালনা করুন' : 'Manage income & expense categories'}</p></div></button><button onClick={onShowUsageGuide} className="w-full p-6 flex items-center gap-5 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border-b dark:border-gray-700 text-left"><div className="bg-amber-50 dark:bg-amber-900/30 p-3 rounded-2xl text-amber-600 dark:text-amber-400"><BookOpen size={20}/></div><div><p className="font-black text-sm text-gray-900 dark:text-gray-100">{t('usageGuide')}</p><p className="text-[10px] text-gray-500 dark:text-gray-400">{lang === 'bn' ? 'অ্যাপটি কিভাবে ব্যবহার করবেন জানুন' : 'Learn how to use the app'}</p></div></button><button onClick={onExport} className="w-full p-6 flex items-center gap-5 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border-b dark:border-gray-700 text-left"><div className="bg-blue-50 dark:bg-blue-900/30 p-3 rounded-2xl text-blue-600 dark:text-blue-400"><Download size={20}/></div><div><p className="font-black text-sm text-gray-900 dark:text-gray-100">{t('backup')}</p><p className="text-[10px] text-gray-500 dark:text-gray-400">{lang === 'bn' ? 'তথ্যগুলো JSON ফাইলে সেভ করুন' : 'Save data to JSON file'}</p></div></button><label className="w-full p-6 flex items-center gap-5 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer text-left border-b dark:border-gray-700"><div className={`${accentClass.replace('bg-', 'bg-opacity-10 bg-')} p-3 rounded-2xl`}><Upload size={20}/></div><div><p className="font-black text-sm text-gray-900 dark:text-gray-100">{t('restore')}</p><p className="text-[10px] text-gray-500 dark:text-gray-400">{lang === 'bn' ? 'পুরানো ডাটা ফিরিয়ে আনুন' : 'Bring back old data'}</p></div><input type="file" accept=".json" onChange={onImport} className="hidden" /></label><button onClick={onShowDevProfile} className="w-full p-6 flex items-center gap-5 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left"><div className="bg-violet-50 dark:bg-violet-900/30 p-3 rounded-2xl text-violet-600 dark:text-violet-400"><User size={20}/></div><div><p className="font-black text-sm text-gray-900 dark:text-gray-100">{t('devProfile')}</p><p className="text-[10px] text-gray-500 dark:text-gray-400">{lang === 'bn' ? 'আমার সম্পর্কে জানুন' : 'Know about me'}</p></div></button></div>
       <div className="text-center p-10 opacity-60"><FileText size={40} className="mx-auto mb-4 text-gray-300 dark:text-gray-600" /><p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">{t('appTitle')} v2.5 • {lang === 'bn' ? 'পার্সোনাল এডিশন' : 'Personal Edition'}</p></div>
@@ -1024,8 +918,8 @@ function EntryModal({ t, lang, onClose, onSubmit, theme, categories, onUpdateKha
   const [amount, setAmount] = useState(initialData?.amount?.toString() || '');
   const [category, setCategory] = useState(initialData?.category || '');
   const [person, setPerson] = useState(initialData?.person || '');
-  const [date, setDate] = useState(initialData?.date || new Date().toISOString().split('T')[0]);
-  const [dueDate, setDueDate] = useState(initialData?.dueDate || new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(initialData?.date || getLocalDateStr());
+  const [dueDate, setDueDate] = useState(initialData?.dueDate || getLocalDateStr());
   const [note, setNote] = useState(initialData?.note || initialData?.reason || '');
   const [newCategoryLabel, setNewCategoryLabel] = useState('');
   const [showAddCategory, setShowAddCategory] = useState(false);
@@ -1261,7 +1155,7 @@ function DevProfileModal({ t, onClose, theme }: any) {
         </div>
 
         <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-4">
-          {t('devName')}
+          {translations.bn.devName}
         </h2>
 
         <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed text-justify px-2 mb-10">
@@ -1457,7 +1351,7 @@ function UsageGuideModal({ t, onClose, theme, lang }: any) {
 
 function PaymentModal({ t, lang, loan, payment, onClose, onSubmit, theme }: any) {
   const [amount, setAmount] = useState(payment?.amount?.toString() || '');
-  const [date, setDate] = useState(payment?.date || new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(payment?.date || getLocalDateStr());
   const [note, setNote] = useState(payment?.note || '');
   const accentClass = THEME_MAP[theme as ThemeColor].split(' ')[0];
 
@@ -1520,7 +1414,7 @@ function DeleteConfirmModal({ t, onClose, onConfirm }: any) {
   return (
     <div className="fixed inset-0 z-[160] flex items-center justify-center p-6 animate-in fade-in duration-200">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={onClose}></div>
-      <div className="relative bg-white dark:bg-gray-800 w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in-95 duration-200 text-center">
+      <div className="relative bg-white dark:bg-gray-800 w-full max-sm:w-[95%] max-w-sm rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in-95 duration-200 text-center">
         <div className="w-20 h-20 bg-rose-50 dark:bg-rose-900/30 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-6">
           <Trash2 size={40} />
         </div>
@@ -1541,7 +1435,7 @@ function SettleConfirmModal({ t, lang, loan, onClose, onConfirm }: any) {
   return (
     <div className="fixed inset-0 z-[160] flex items-center justify-center p-6 animate-in fade-in duration-200">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={onClose}></div>
-      <div className="relative bg-white dark:bg-gray-800 w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in-95 duration-200 text-center">
+      <div className="relative bg-white dark:bg-gray-800 w-full max-sm:w-[95%] max-w-sm rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in-95 duration-200 text-center">
         <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6">
           <CheckCircle size={40} />
         </div>

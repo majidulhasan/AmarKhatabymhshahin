@@ -1,65 +1,69 @@
-const CACHE_NAME = 'amar-khata-offline-v2';
 
-const ASSETS_TO_CACHE = [
+const CACHE_NAME = 'amar-khata-ultimate-v1';
+
+// অ্যাপের মূল ফাইলগুলো যা অফলাইনে চলার জন্য অত্যাবশ্যক
+const CORE_ASSETS = [
+  './',
   'index.html',
+  'index.tsx',
   'manifest.json',
-  'https://cdn.tailwindcss.com',
-  'https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap'
+  'logo.png',
+  'https://cdn.tailwindcss.com'
 ];
 
-// ইনস্টলেশন পর্যায়ে সব ফাইল সেভ করা
+// সার্ভিস ওয়ার্কার ইনস্টল হওয়ার সময় কোর ফাইলগুলো ক্যাশ করা
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
+      console.log('Pre-caching core assets...');
+      return cache.addAll(CORE_ASSETS);
     })
   );
 });
 
-// পুরনো ক্যাশ ডিলিট করা
+// পুরনো ক্যাশ পরিষ্কার করা
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
-      );
-    })
+    caches.keys().then((keys) => Promise.all(
+      keys.map((key) => {
+        if (key !== CACHE_NAME) return caches.delete(key);
+      })
+    ))
   );
-  return self.clients.claim();
+  self.clients.claim();
 });
 
-// নেটওয়ার্ক রিকোয়েস্ট হ্যান্ডেল করা (অফলাইন ফার্স্ট)
+// সব রিকোয়েস্ট ইন্টারসেপ্ট করা
 self.addEventListener('fetch', (event) => {
+  // শুধুমাত্র GET রিকোয়েস্ট হ্যান্ডেল করা হবে
   if (event.request.method !== 'GET') return;
+
+  const url = new URL(event.request.url);
 
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      // যদি ক্যাশে থাকে, তবে ইন্টারনেট ছাড়াই রিটার্ন করবে
+      // যদি ক্যাশে ফাইল থাকে, তবে সাথে সাথে সেটি রিটার্ন করবে
       if (cachedResponse) {
         return cachedResponse;
       }
 
-      // ক্যাশে না থাকলে নেটওয়ার্ক থেকে আনা এবং ভবিষ্যতে ব্যবহারের জন্য সেভ করা
+      // ক্যাশে না থাকলে নেটওয়ার্ক থেকে আনবে এবং ভবিষ্যতে অফলাইনের জন্য সেভ করবে (Dynamic Caching)
       return fetch(event.request).then((networkResponse) => {
-        if (!networkResponse || networkResponse.status !== 200) {
-          return networkResponse;
-        }
-
-        const responseToCache = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          // শুধুমাত্র নিজস্ব অরিজিন এবং এক্সটার্নাল লাইব্রেরি ক্যাশ করা
-          if (event.request.url.startsWith('http')) {
+        // যদি রেসপন্স ঠিক থাকে তবে ক্যাশ করবে
+        if (networkResponse && networkResponse.status === 200) {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseToCache);
-          }
-        });
-
+          });
+        }
         return networkResponse;
       }).catch(() => {
-        // একদম অফলাইন এবং ক্যাশেও নেই এমন অবস্থায় index.html দেওয়া
+        // যদি নেটওয়ার্ক না থাকে এবং রিকোয়েস্টটি একটি পেজ ন্যাভিগেশন হয় (যেমন রিফ্রেশ)
         if (event.request.mode === 'navigate') {
-          return caches.match('index.html');
+          return caches.match('index.html') || caches.match('./');
         }
+        return null;
       });
     })
   );

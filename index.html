@@ -1,23 +1,35 @@
+
 <!DOCTYPE html>
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#4f46e5">
+    
+    <!-- PWA primary meta tags -->
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="আমার খাতা">
+    <meta name="application-name" content="আমার খাতা">
+    
+    <!-- App PNG Icons -->
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="apple-touch-icon" href="logo.png">
+    
     <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="https://api.dicebear.com/7.x/initials/svg?seed=AK&backgroundColor=4f46e5">
     
     <title>আমার খাতা - ব্যক্তিগত হিসাব</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        window.tailwind.config = {
+        tailwind.config = {
           darkMode: 'class',
           theme: {
             extend: {
               colors: {
-                gray: { 750: '#2d3748' }
+                gray: {
+                  750: '#2d3748',
+                }
               }
             }
           }
@@ -25,74 +37,74 @@
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { 
-            font-family: 'Hind Siliguri', sans-serif; 
-            -webkit-tap-highlight-color: transparent; 
+        body {
+            font-family: 'Hind Siliguri', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            overflow-x: hidden;
             overscroll-behavior-y: contain;
         }
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        @keyframes progress { 0% { transform: translateX(-100%); } 50% { transform: translateX(0); } 100% { transform: translateX(100%); } }
-        .animate-progress { animation: progress 1s infinite linear; }
-        
-        #offline-indicator { 
-            display: none; 
-            position: fixed; 
-            top: 0; left: 0; width: 100%; 
-            background: #6366f1; color: white; 
-            text-align: center; font-size: 11px; padding: 6px 0;
-            z-index: 9999; font-weight: bold;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
         }
-        body.is-offline #offline-indicator { 
-            display: block;
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        @keyframes progress {
+          0% { transform: translateX(-100%); }
+          50% { transform: translateX(0); }
+          100% { transform: translateX(100%); }
+        }
+        .animate-progress {
+          animation: progress 1s infinite linear;
         }
     </style>
-    <script type="importmap">
+<script type="importmap">
 {
   "imports": {
+    "react/": "https://esm.sh/react@^19.2.4/",
     "react": "https://esm.sh/react@^19.2.4",
-    "react-dom": "https://esm.sh/react-dom@^19.2.4",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
     "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
     "recharts": "https://esm.sh/recharts@^3.7.0",
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "path": "https://esm.sh/path@^0.12.7",
     "vite": "https://esm.sh/vite@^7.3.1",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
+    "url": "https://esm.sh/url@^0.11.4"
   }
 }
 </script>
 <link rel="stylesheet" href="/index.css">
 </head>
 <body class="bg-gray-50 text-gray-900 transition-colors duration-300">
-    <div id="offline-indicator">অফলাইন মোড: ডাটা ডিভাইসে সুরক্ষিত আছে</div>
-
     <div id="root"></div>
-
-    <script type="module" src="./index.tsx"></script>
-    
+    <script type="module" src="index.tsx"></script>
     <script>
-        function updateOnlineStatus() {
-            const isOffline = !navigator.onLine;
-            document.body.classList.toggle('is-offline', isOffline);
-        }
-        window.addEventListener('online', updateOnlineStatus);
-        window.addEventListener('offline', updateOnlineStatus);
-        updateOnlineStatus();
-
+        // Service Worker registration logic with improved offline check
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                // ব্রাউজারের অরিজিন মিসম্যাচ এরর এড়াতে ডাইনামিক পাথ জেনারেট করা
-                const swUrl = new URL('sw.js', window.location.href).href;
-                
-                navigator.serviceWorker.register(swUrl)
+                // Using relative path './sw.js' to avoid origin/scope issues
+                navigator.serviceWorker.register('./sw.js')
                     .then(reg => {
-                        console.log('অফলাইন সার্ভিস সক্রিয় হয়েছে: ', reg.scope);
+                        console.log('SW Registered:', reg.scope);
+                        
+                        // Look for updates to the SW
+                        reg.onupdatefound = () => {
+                          const installingWorker = reg.installing;
+                          if (installingWorker) {
+                            installingWorker.onstatechange = () => {
+                              if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                // New version available, notify user or auto-reload
+                                console.log('New content is available; please refresh.');
+                                window.location.reload();
+                              }
+                            };
+                          }
+                        };
                     })
                     .catch(err => {
-                        console.warn('সার্ভিস ওয়ার্কার ফেল করেছে, তবে অ্যাপটি কাজ করবে। এরর:', err);
-                        // যদি ফেল করে, তবে অল্টারনেটিভ সরাসরি পাথ ট্রাই করা
-                        navigator.serviceWorker.register('sw.js').catch(() => {});
+                        console.error('SW Registration failed:', err);
                     });
             });
         }

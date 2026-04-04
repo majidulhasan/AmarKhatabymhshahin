@@ -2,21 +2,25 @@
 {
   "name": "আমার খাতা - ব্যক্তিগত হিসাব",
   "short_name": "আমার খাতা",
-  "description": "অফলাইন ব্যক্তিগত আয়-ব্যয় ট্র্যাকার",
-  "start_url": "./",
+  "description": "সম্পূর্ণ অফলাইন ব্যক্তিগত আয়-ব্যয় ট্র্যাকার ও ডায়েরি",
+  "start_url": "https://mhsvai.github.io/amar-khata-by-mhshahin/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#4f46e5",
+  "orientation": "portrait",
+  "scope": "./",
   "icons": [
     {
-      "src": "https://api.dicebear.com/7.x/initials/svg?seed=AK&backgroundColor=4f46e5",
+      "src": "logo.png",
       "sizes": "192x192",
-      "type": "image/svg+xml"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "https://api.dicebear.com/7.x/initials/svg?seed=AK&backgroundColor=4f46e5",
+      "src": "logo.png",
       "sizes": "512x512",
-      "type": "image/svg+xml"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
